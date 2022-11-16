@@ -1,0 +1,15 @@
+        <component name="health_check_tools" selected="1" canBeEdited="0" show="0">
+            <folderList>
+                <folder name="health_check_tools" destination="${installdir}">
+                    <distributionFileList>
+                        <distributionDirectory>
+                            <origin>health-check-tools</origin>
+                        </distributionDirectory>  
+                    </distributionFileList>
+                    <ruleList>
+                        <!-- Never install, only extract when required -->
+                        <isTrue value="0"/>
+                    </ruleList>
+                </folder>
+            </folderList>
+        </component>

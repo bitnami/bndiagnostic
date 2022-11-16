@@ -1,0 +1,1005 @@
+<component>
+    <name>bndiagnosticfunctions</name>
+    <show>1</show>
+    <functionDefinitionList>
+        <actionDefinition name="bndiagnosticLoadFallbackMetadata">
+            <parameterList>
+                <stringParameter name="componentsVariable"/>
+                <stringParameter name="metadataVariable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${componentsVariable} ${metadataVariable}"/>
+                <setInstallerVariable name="${metadataVariable}" value=""/>
+                <!-- Load fallback metadata in case the properties.ini is not recent enough -->
+                <propertiesFileGet file="${build_project_directory}/bndiagnostic-defaults.properties" key="components" variable="${componentsVariable}"/>
+                <!-- Sort the components/servers alphabetically -->
+                <baseSort text="${component_pattern_pair}" variable="component_pattern_pair"/>
+                <!-- Import fallback metadata for each component/server -->
+                <foreach variables="component" values="${${componentsVariable}}">
+                    <actionList>
+                        <foreach variables="type" values="logs conf priv acl">
+                            <actionList>
+                                <setInstallerVariable name="iterator_data" value=""/>
+                                <propertiesFileGet file="bndiagnostic-defaults.properties" key="${component}_${type}" variable="iterator_data" abortOnError="0" showMessageOnError="0"/>
+                                <setInstallerVariable name="${metadataVariable}" value="${${metadataVariable}} ${type} ${component} &quot;${iterator_data}&quot;">
+                                    <ruleList>
+                                        <stringTest text="${iterator_data}" type="not_empty"/>
+                                    </ruleList>
+                                </setInstallerVariable>
+                            </actionList>
+                        </foreach>
+                    </actionList>
+                    <ruleList>
+                        <stringTest text="${${componentsVariable}}" type="not_empty"/>
+                    </ruleList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="checkIfInstalldir">
+            <parameterList>
+                <stringParameter name="path"/>
+            </parameterList>
+            <actionList>
+                <actionGroup ruleEvaluationLogic="or">
+                    <ruleList>
+                        <isValidBitnamiInstall path="${path}"/>
+                        <isValidBashInstall path="${path}"/>
+                        <isValidXamppInstall path="${path}/xampp"/>
+                    </ruleList>
+                    <actionList>
+                        <setInstallerVariable name="installdir" value="${path}"/>
+                        <setInstallerVariable name="installdir" value="${path}/xampp">
+                            <ruleList>
+                                <isValidXamppInstall path="${path}/xampp"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                        <setInstallerVariable name="bndiagnosticTargetDir" value="${path}"/>
+                        <setInstallerVariable name="project.parameter(base_installdir).ask" value="0"/>
+                        <setInstallerVariable name="project.parameter(health_check_tools).ask" value="0">
+                            <ruleList>
+                                <isValidXamppInstall path="${path}/xampp"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                        <setInstallerVariable name="validInstallationFound" value="1"/>
+                    </actionList>
+                </actionGroup>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="runUpdater">
+            <parameterList>
+                <directoryParameter name="bndiagnosticTargetDir"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${bndiagnosticTargetDir}"/>
+                <actionGroup>
+                    <actionList>
+                        <unpackDirectory component="autoupdater" folder="autoupdater" destination="${system_temp_directory}" origin="autoupdater"/>
+                        <iniFileSet file="${system_temp_directory}/autoupdater/update.ini" section="Update">
+                            <key>bndiagnostic_tool_installdir</key>
+                            <value>${bndiagnosticTargetDir}</value>
+                        </iniFileSet>
+                        <iniFileSet file="${system_temp_directory}/autoupdater/update.ini" section="Update">
+                            <key>bndiagnostic_tool_ui</key>
+                            <value>${installer_ui}</value>
+                        </iniFileSet>
+                        <runProgram workingDirectory="${system_temp_directory}/autoupdater" abortOnError="0" showMessageOnError="0">
+                            <program>./autoupdate-${platform_name}.${platform_exec_suffix}</program>
+                            <programArguments>--mode unattended</programArguments>
+                        </runProgram>
+                        <actionGroup>
+                            <actionList>
+                                <if>
+                                    <conditionRuleList>
+                                        <compareText text="${installer_ui}" logic="equals" value="gui"/>
+                                    </conditionRuleList>
+                                    <actionList>
+                                        <showQuestion text="An updated version is available. Would you like to download and execute it?" variable="runUpdated"/>
+                                    </actionList>
+                                    <elseActionList>
+                                        <showQuestion text="An updated version is available. Would you like to download it? You would need to run it manually later." variable="runUpdated"/>
+                                    </elseActionList>
+                                </if>
+                                <actionGroup>
+                                    <actionList>
+                                        <runProgram workingDirectory="${system_temp_directory}/autoupdater" abortOnError="0" showMessageOnError="0">
+                                            <program>./autoupdate-${platform_name}.${platform_exec_suffix}</program>
+                                            <programArguments>--mode unattended --unattendedmodebehavior download &amp;</programArguments>
+                                        </runProgram>
+                                        <if>
+                                            <conditionRuleList>
+                                                <compareText text="${installer_ui}" logic="equals" value="gui"/>
+                                            </conditionRuleList>
+                                            <actionList>
+                                                <exit exitCode="0"/>
+                                            </actionList>
+                                            <elseActionList>
+                                                <setInstallerVariable name="fullCommand">
+                                                    <value>
+
+${bndiagnosticTargetDir}/bndiagnostic-tool ${installer_command_line_arguments}
+
+</value>
+                                                </setInstallerVariable>
+                                            </elseActionList>
+                                        </if>
+                                        <consoleWrite text="The installer will exit now. To run the updated version run the following command: ${fullCommand}"/>
+                                        <exit exitCode="0"/>
+                                    </actionList>
+                                    <ruleList>
+                                        <isTrue value="${runUpdated}"/>
+                                    </ruleList>
+                                </actionGroup>
+                            </actionList>
+                            <ruleList>
+                                <compareValues value1="${program_exit_code}" logic="equals" value2="0"/>
+                            </ruleList>
+                        </actionGroup>
+                    </actionList>
+                </actionGroup>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticCollectFilesFromStack">
+            <parameterList>
+                <directoryParameter name="installdir"/>
+                <stringParameter name="dataVariable"/>
+                <stringParameter name="type"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${dataVariable}"/>
+                <setInstallerVariable name="${dataVariable}" value=""/>
+                <setInstallerVariable name="component_pattern_pair" value=""/>
+                <!-- Get all patterns for components -->
+                <actionGroup>
+                    <actionList>
+                        <iniFileGet file="${installdir}/properties.ini" section="Support" key="installed_components" variable="installed_components"/>
+                        <foreach variables="component" values="${installed_components}">
+                            <actionList>
+                                <iniFileGet file="${installdir}/properties.ini" section="Support" key="${component}_${type}" variable="pattern"/>
+                                <!-- Get conf/log files with patterns as included in the metadata -->
+                                <setInstallerVariable name="component_pattern_pair" value="${component_pattern_pair} ${component} &quot;${pattern}&quot;">
+                                    <ruleList>
+                                        <stringTest text="${pattern}" type="not_empty"/>
+                                    </ruleList>
+                                </setInstallerVariable>
+                            </actionList>
+                        </foreach>
+                    </actionList>
+                    <!-- XAMPP Portable does not include a properties.ini file by default -->
+                    <ruleList>
+                        <fileTest path="${installdir}/properties.ini" condition="exists"/>
+                        <fileTest path="${installdir}/nami/bin/provisioner" condition="not_exists"/>
+                    </ruleList>
+                </actionGroup>
+                <!-- Get metadata from Nami -->
+                <actionGroup abortOnError="0" showMessageOnError="0">
+                    <actionList>
+                        <!-- Get the installed components from the Nami tool -->
+                        <writeFile path="/tmp/namiList.sh">
+                            <text>#!/bin/bash
+nami list | sed 's/\[//g ; s/\]//g ; s/\"//g ; s/com.bitnami.//g ; s/,/ /g'</text>
+                        </writeFile>
+                        <changePermissions permissions="0755" files="/tmp/namiList.sh"/>
+                        <setInstallerVariableFromScriptOutput exec="/tmp/namiList.sh" name="components_list"/>
+                        <deleteFile path="/tmp/namiList.sh"/>
+                        <writeFile path="/tmp/namiObtainMetadata.sh">
+                            <text>#!/bin/bash
+echo "\${'$app'}.bndiagnostic${'${1^}'}" | nami console ${'$2'} | sed "s/nami> //g ; s/'//g"</text>
+                        </writeFile>
+                        <changePermissions permissions="0755" files="/tmp/namiObtainMetadata.sh"/>
+                        <foreach variables="component" values="${components_list}">
+                            <actionList>
+                                <!-- Get the support information of each component -->
+                                <setInstallerVariableFromScriptOutput exec="/tmp/namiObtainMetadata.sh" execArgs="${type} ${component}" name="pattern"/>
+                                <!-- Get conf/log files with patterns as included in the metadata -->
+                                <setInstallerVariable name="component_pattern_pair" value="${component_pattern_pair} ${component} &quot;${pattern}&quot;">
+                                    <ruleList>
+                                        <compareText text="${pattern}" logic="does_not_equal" value="undefined"/>
+                                    </ruleList>
+                                </setInstallerVariable>
+                            </actionList>
+                        </foreach>
+                        <deleteFile path="/tmp/namiObtainMetadata.sh"/>
+                    </actionList>
+                    <!-- The containers don't include the properties.ini file -->
+                    <ruleList>
+                        <fileTest path="${installdir}/nami/bin/nami" condition="executable"/>
+                    </ruleList>
+                </actionGroup>
+                <!-- Get fallback metadata (file directories in case the user's properties.ini file is not new enough) -->
+                <foreach variables="entry_type component pattern" values="${fallback_metadata}">
+                    <actionList>
+                        <setInstallerVariable name="component_pattern_pair" value="${component_pattern_pair} ${component} &quot;${pattern}&quot;">
+                            <ruleList>
+                                <compareText text="${entry_type}" logic="equals" value="${type}"/>
+                                <stringTest text="${pattern}" type="not_empty"/>
+                                <compareText text="${component_pattern_pair}" logic="does_not_contain" value=" ${component}"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
+                </foreach>
+                <!-- By default all the permissions from the files in /bitnami/APPNAME, ${installdir}/apps/APPNAME and ${installdir}/common are retreived -->
+                <actionGroup>
+                    <actionList>
+                        <foreach variables="dirPath" values="/bitnami ${installdir}/apps">
+                            <actionList>
+                                <actionGroup>
+                                    <actionList>
+                                        <baseGlob pattern="*" variable="installedApps" basePath="${dirPath}" filesOnly="0"/>
+                                        <foreach variables="component" values="${installedApps}">
+                                            <actionList>
+                                                <setInstallerVariable name="component_pattern_pair" value="${component_pattern_pair} ${component} &quot;${dirPath}/${component}/*&quot;"></setInstallerVariable>
+                                            </actionList>
+                                        </foreach>
+                                    </actionList>
+                                    <ruleList>
+                                        <fileExists path="${dirPath}"/>
+                                    </ruleList>
+                                </actionGroup>
+                            </actionList>
+                        </foreach>
+                    </actionList>
+                    <ruleList>
+                        <compareText text="${type}" logic="equals" value="acl"/>
+                    </ruleList>
+                </actionGroup>
+                <!-- Match all patterns to files and add to variable -->
+                <foreach variables="component pattern" values="${component_pattern_pair}">
+                    <actionList>
+                        <!-- TODO: Implement exclude? -->
+                        <if>
+                            <conditionRuleList>
+                                <compareText text="${type}" logic="equals" value="acl"/>
+                            </conditionRuleList>
+                            <actionList>
+                                <runProgram abortOnError="0" showMessageOnError="0">
+                                    <program>/bin/bash</program>
+                                    <programArguments>-c &quot;ls -a -l -R ${pattern}&quot;</programArguments>
+                                    <workingDirectory>${installdir}</workingDirectory>
+                                </runProgram>
+                                <addTextToFile abortOnError="0" text="${program_stdout}" file="${system_temp_directory}/${component}.permissions"/>
+                                <if>
+                                    <conditionRuleList>
+                                        <fileTest path="${system_temp_directory}/${component}.permissions" condition="is_empty"/>
+                                    </conditionRuleList>
+                                    <actionList>
+                                        <deleteFile abortOnError="0" path="${system_temp_directory}/${component}.permissions"/>
+                                        <setInstallerVariable name="files" value=""/>
+                                    </actionList>
+                                    <elseActionList>
+                                        <setInstallerVariable name="files" value="${system_temp_directory}/${component}.permissions"/>
+                                    </elseActionList>
+                                </if>
+                            </actionList>
+                            <elseActionList>
+                                <baseGlob pattern="${pattern}" variable="files" basePath="${installdir}"/>
+                            </elseActionList>
+                        </if>
+                        <foreach variables="file" values="${files}">
+                            <actionList>
+                                <setInstallerVariable name="${dataVariable}" value="${${dataVariable}} ${type} ${component} ${file}"/>
+                            </actionList>
+                        </foreach>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticCollectSystemInfo">
+            <parameterList>
+                <directoryParameter name="installdir"/>
+                <stringParameter name="dataVariable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${dataVariable}"/>
+                <setInstallerVariable name="system_info" value=""/>
+                <setInstallerVariable name="key_value_pairs" value=""/>
+                <baseGetStackKey installdir="${installdir}" variable="base_stack_key"/>
+                <!-- Get data from "properties.ini" file -->
+                <actionGroup>
+                    <actionList>
+                        <foreach variables="section key">
+                            <values>
+                                General base_stack_name
+                                General base_stack_version
+                                General base_stack_platform
+                                General base_stack_service
+                                General require_root_privileges
+                                General installtype
+                            </values>
+                            <actionList>
+                                <iniFileGet file="${installdir}/properties.ini" section="${section}" key="${key}" variable="ini_${key}"/>
+                            </actionList>
+                        </foreach>
+                        <setInstallerVariable name="key_value_pairs">
+                            <value>
+                                base_stack_name         "${ini_base_stack_name}"
+                                base_stack_version      "${ini_base_stack_version}"
+                                base_stack_platform     "${ini_base_stack_platform}"
+                                base_stack_service      "${ini_base_stack_service}"
+                                require_root_privileges "${ini_require_root_privileges}"
+                                installtype             "${ini_installtype}"
+                            </value>
+                        </setInstallerVariable>
+                    </actionList>
+                    <ruleList>
+                        <fileTest path="${installdir}/properties.ini" condition="exists"/>
+                    </ruleList>
+                </actionGroup>
+                <!-- Get disk information -->
+                <getFreeDiskSpace path="${installdir}" units="MB" variable="machine_free_disk_space"/>
+                <!-- Parse and order data -->
+                <setInstallerVariable name="key_value_pairs">
+                    <value>
+                        bndiagnostic_version               "${project.version}"
+                        installdir                      "${installdir.unix}"
+                        base_stack_key                  "${base_stack_key}"
+                        ${key_value_pairs}
+                        system_locale                   "${system_locale}"
+                        system_username                 "${system_username}"
+                        user_home_directory             "${user_home_directory.unix}"
+                        machine_free_disk_space         "${machine_free_disk_space} MB"
+                        machine_cpu_count               "${machine_cpu_count}"
+                        machine_cpu_speed               "${machine_cpu_speed} MHz"
+                        machine_fqdn                    "${machine_fqdn}"
+                        machine_hostname                "${machine_hostname}"
+                        machine_ipaddr                  "${machine_ipaddr}"
+                        machine_swap_memory             "${machine_swap_memory} MB"
+                        machine_total_memory            "${machine_total_memory} MB"
+                        platform_has_smp                "${platform_has_smp}"
+                    </value>
+                </setInstallerVariable>
+                <!-- Data for Linux -->
+                <setInstallerVariable name="key_value_pairs">
+                    <value>
+                        ${key_value_pairs}
+                        os_family                      "linux"
+                        linux_distribution             "${linux_distribution}"
+                        linux_distribution_codename    "${linux_distribution_codename}"
+                        linux_distribution_description "${linux_distribution_description}"
+                        linux_distribution_fullname    "${linux_distribution_fullname}"
+                        linux_distribution_id          "${linux_distribution_id}"
+                        linux_distribution_shortname   "${linux_distribution_shortname}"
+                        linux_distribution_version     "${linux_distribution_version}"
+                        linux_distribution_release     "${linux_distribution_release}"
+                    </value>
+                    <ruleList>
+                        <platformTest type="linux"/>
+                    </ruleList>
+                </setInstallerVariable>
+                <!-- Get the data -->
+                <foreach variables="key value" values="${key_value_pairs}">
+                    <actionList>
+                        <setInstallerVariable name="system_info" value="${system_info} system_info ${key} &quot;${value}&quot;">
+                            <ruleList>
+                                <stringTest text="${value}" type="not_empty"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
+                </foreach>
+                <!-- Set output variables -->
+                <setInstallerVariable name="${dataVariable}" value="${system_info}"/>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticCollectInformation">
+            <parameterList>
+                <directoryParameter name="installdir"/>
+                <stringParameter name="dataVariable"/>
+                <stringParameter name="logsVariable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${dataVariable}"/>
+                <!-- Only collect permissions information when UNIX -->
+                <setInstallerVariable name="dataToCollect" value="logs conf priv"/>
+                <setInstallerVariable name="dataToCollect" value="${dataToCollect} acl" >
+                    <ruleList>
+                        <platformTest type="unix"/>
+                    </ruleList>
+                </setInstallerVariable>
+                <!-- Collect permissions, logs and configuration files -->
+                <foreach variables="type" values="${dataToCollect}">
+                    <actionList>
+                        <bndiagnosticCollectFilesFromStack installdir="${installdir.unix}" type="${type}" dataVariable="${type}_info"/>
+                    </actionList>
+                </foreach>
+                <!-- Collect system information -->
+                <bndiagnosticCollectSystemInfo installdir="${installdir.unix}" dataVariable="system_info"/>
+                <setInstallerVariable name="${dataVariable}" value="${logs_info} ${conf_info} ${priv_info} ${system_info} ${acl_info}"/>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticDescribeCollectedInformation">
+            <parameterList>
+                <directoryParameter name="installdir"/>
+                <stringParameter name="data"/>
+                <stringParameter name="textVariable"/>
+                <stringParameter name="logsVariable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${textVariable}"/>
+                <!-- Initialize variables with empty content -->
+                <foreach variables="newVariable" values="text conf_text priv_text logs_text acl_text system_info_text">
+                    <actionList>
+                        <setInstallerVariable name="${newVariable}" value=""/>
+                    </actionList>
+                </foreach>
+                <!-- Start populating the text variable -->
+                <foreach variables="type key value" values="${data}">
+                    <actionList>
+                        <setInstallerVariable name="${type}_text">
+                            <value>${${type}_text}
+- ${key} = ${value}</value>
+                            <ruleList>
+                                <compareText text="${type}" logic="equals" value="system_info"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                        <setInstallerVariable name="${type}_text">
+                            <value>${${type}_text}
+- ${installdir}/${value}</value>
+                            <ruleEvaluationLogic>or</ruleEvaluationLogic>
+                            <ruleList>
+                                <compareText text="${type}" logic="equals" value="conf"/>
+                                <compareText text="${type}" logic="equals" value="logs"/>
+                                <compareText text="${type}" logic="equals" value="priv"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                        <setInstallerVariable name="${type}_text">
+                            <value>${${type}_text}
+- ${key}</value>
+                            <ruleList>
+                                <compareText text="${${type}_text}" logic="contains" value="${key}" negate="1"/>
+                                <compareText text="${type}" logic="equals" value="acl"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
+                </foreach>
+                <!-- Complete the text variable with descriptions for each section -->
+                <foreach variables="type typeDescriptor">
+                    <!-- Added in opposite order, to avoid weird blank spaces in the beginning -->
+                    <values>
+                        logs        "log files"
+                        conf        "configuration files"
+                        priv        "private configuration files"
+                        acl         "components&apos; files ownership and permissions"
+                        system_info "system information"
+                    </values>
+                    <actionList>
+                        <setInstallerVariable name="text">
+                            <value>${text}
+
+The following ${typeDescriptor} will be added:
+${${type}_text}</value>
+                            <ruleList>
+                                <stringTest text="${${type}_text}" type="not_empty"/>
+                            </ruleList>
+                        </setInstallerVariable>
+                    </actionList>
+                </foreach>
+                <setInstallerVariable name="text">
+                    <value>${text}
+
+The following health check logs will be added:
+
+${${logsVariable}}
+</value>
+                    <ruleList>
+                        <isTrue value="${runTool}"/>
+                    </ruleList>
+                </setInstallerVariable>
+
+                <setInstallerVariable name="${textVariable}">
+                    <value>We will be collecting the information and files listed below. Exercise caution when posting the resulting diagnostic bundle to public sites as it contains detailed diagnostic information.${text}</value>
+                    <ruleList>
+                        <stringTest text="${text}" type="not_empty"/>
+                    </ruleList>
+                </setInstallerVariable>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticAddInstallerLogs">
+            <parameterList>
+                <directoryParameter name="path"/>
+            </parameterList>
+            <actionList>
+                <iniFileGet file="${installdir}/bndiagnostic-regex.ini" key="IDS" section="General" variable="regExps"/>
+                <createDirectory path="${path}/installer-logs"/>
+                <setInstallerVariable name="installer_log_files" value=""/>
+                <findFile>
+                    <baseDirectory>${system_temp_directory}</baseDirectory>
+                    <pattern>installbuilder_installer*.log</pattern>
+                    <findAll>1</findAll>
+                    <variable>installer_log_files</variable>
+                </findFile>
+                <findFile>
+                    <baseDirectory>${system_temp_directory}</baseDirectory>
+                    <pattern>bitrock_installer*.log</pattern>
+                    <findAll>1</findAll>
+                    <variable>legacy_installer_log_files</variable>
+                </findFile>
+                <foreach variables="logFile" values="${installer_log_files} ${legacy_installer_log_files}">
+                    <actionList>
+                        <copyFile origin="${logFile}" destination="${path}/installer-logs"/>
+                    </actionList>
+                </foreach>
+                <foreach variables="regexID" values="${regExps}">
+                    <actionList>
+                        <iniFileGet file="${installdir}/bndiagnostic-regex.ini" section="General" key="${regexID}" variable="regExp"/>
+                        <substitute type="regexp" abortOnError="0" showMessageOnError="0">
+                            <files>${path}/installer-logs/*</files>
+                            <substitutionList>
+                                <substitution>
+                                    <pattern>${regExp}</pattern>
+                                    <value>**BNDIAGNOSTIC-${regexID}**</value>
+                                </substitution>
+                            </substitutionList>
+                        </substitute>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticCopyFiles">
+            <parameterList>
+                <directoryParameter name="installdir"/>
+                <directoryParameter name="file"/>
+                <directoryParameter name="path"/>
+                <stringParameter name="info"/>
+                <stringParameter name="type"/>
+            </parameterList>
+            <actionList>
+                <!--Setting the file size limit to 10MB -->
+                <setInstallerVariable name="sizeLimit" value="10000000"/>
+                <iniFileGet file="${installdir}/bndiagnostic-regex.ini" key="IDS" section="General" variable="regExps"/>
+                <foreach variables="entry_type component file" values="${info}">
+                    <actionList>
+                        <actionGroup>
+                            <actionList>
+                                <if>
+                                    <conditionRuleList>
+                                        <regExMatch logic="matches" pattern="^/" text="${file}"/>
+                                    </conditionRuleList>
+                                    <actionList>
+                                        <!-- Absolute path -->
+                                        <setInstallerVariable name="originalPath" value="${file}"/>
+                                    </actionList>
+                                    <elseActionList>
+                                        <!-- Relative path -->
+                                        <setInstallerVariable name="originalPath" value="${installdir}/${file}"/>
+                                    </elseActionList>
+                                </if>
+                                <dirName path="${file}" variable="file_parent_dir" />
+                                <createDirectory path="${path}/${file_parent_dir}" />
+                                <getSymLinkTarget>
+                                    <link>${originalPath}</link>
+                                    <variable>originalPath</variable>
+                                    <ruleList>
+                                        <fileTest path="${originalPath}" condition="is_symlink"/>
+                                    </ruleList>
+                                </getSymLinkTarget>
+                                <actionGroup>
+                                    <actionList>
+                                        <setInstallerVariable name="originalDataFilePath" value="${installdir}/bndiagnostic/original-data/${file}"/>
+                                        <runProgram program="cmp" abortOnError="0" showMessageOnError="0" programArguments="--quiet ${originalDataFilePath} ${installdir}/${file}"/>
+                                        <addTextToFile file="${path}/changed.txt">
+                                            <text>original-data/${file} ${file}
+</text>
+                                            <ruleList>
+                                                <compareValues value1="${program_exit_code}" logic="equals" value2="1"/>
+                                            </ruleList>
+                                        </addTextToFile>
+                                    </actionList>
+                                    <ruleList>
+                                        <regExMatch text="${file}" logic="does_not_match" pattern="\.log$"/>
+                                        <fileExists path="${installdir}/bndiagnostic/original-data/${file}"/>
+                                        <platformTest type="linux"/>
+                                        <fileExists path="${installdir}/${file}"/>
+                                        <isFalse value="${build_run}"/>
+                                    </ruleList>
+                                </actionGroup>
+                                <getFileInfo path="${originalPath}" type="size" variable="fileSize" abortOnError="0" showMessageOnError="0"/>
+                                <setInstallerVariable name="isBigFile" value="0"/>
+                                <actionGroup>
+                                    <actionList>
+                                        <setInstallerVariable name="isBigFile" value="1"/>
+                                        <addTextToFile file="${path}/excluded.txt">
+                                            <text>${originalPath}
+</text>
+                                        </addTextToFile>
+                                    </actionList>
+                                    <ruleList>
+                                        <compareValues value1="${fileSize}" logic="greater" value2="${sizeLimit}"/>
+                                    </ruleList>
+                                </actionGroup>
+                                <actionGroup>
+                                    <actionList>
+                                        <copyFile abortOnError="0" showMessageOnError="0" origin="${originalPath}" destination="${path}/${file_parent_dir}"/>
+                                        <copyFile abortOnError="0" showMessageOnError="0" origin="${installdir}/bndiagnostic/original-data" destination="${path}">
+                                            <ruleList>
+                                                <isFalse value="${build_run}"/>
+                                            </ruleList>
+                                        </copyFile>
+                                        <actionGroup>
+                                            <actionList>
+                                                <foreach variables="regexID" values="${regExps}">
+                                                    <actionList>
+                                                        <iniFileGet file="${installdir}/bndiagnostic-regex.ini" section="General" key="${regexID}" variable="regExp"/>
+                                                        <substitute type="regexp" abortOnError="0" showMessageOnError="0">
+                                                            <files>${path}/${file}</files>
+                                                            <substitutionList>
+                                                                <substitution>
+                                                                    <pattern>${regExp}</pattern>
+                                                                    <value>**BNDIAGNOSTIC-${regexID}**</value>
+                                                                </substitution>
+                                                            </substitutionList>
+                                                        </substitute>
+                                                    </actionList>
+                                                </foreach>
+                                            </actionList>
+                                            <ruleList>
+                                                <compareText text="${entry_type}" value="priv"/>
+                                            </ruleList>
+                                        </actionGroup>
+                                    </actionList>
+                                    <ruleList>
+                                        <isFalse value="${isBigFile}"/>
+                                    </ruleList>
+                                </actionGroup>
+                            </actionList>
+                            <ruleList>
+                                <compareText text="${entry_type}" logic="equals" value="${type}"/>
+                            </ruleList>
+                        </actionGroup>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticAddHealthCheckToolsInfo">
+            <parameterList>
+                <directoryParameter name="installdir"/>
+                <directoryParameter name="path"/>
+            </parameterList>
+            <actionList>
+                <iniFileGet file="${installdir}/bndiagnostic-regex.ini" key="IDS" section="General" variable="regExps"/>
+                <baseGlob abortOnError="0" showMessageOnError="0" pattern="*.log" variable="healthCheckToolsFiles" basePath="${system_temp_directory}/health-check-tools/"/>
+                <copyFile abortOnError="0" showMessageOnError="0" origin="${system_temp_directory}/health-check-tools/*log" destination="${path}"/>
+                <foreach variables="file" values="${healthCheckToolsFiles}">
+                    <actionList>
+                        <foreach variables="regexID" values="${regExps}">
+                            <actionList>
+                                <iniFileGet file="${installdir}/bndiagnostic-regex.ini" section="General" key="${regexID}" variable="regExp"/>
+                                <substitute type="regexp" abortOnError="0" showMessageOnError="0">
+                                    <files>${path}/${file}</files>
+                                    <substitutionList>
+                                        <substitution>
+                                            <pattern>${regExp}</pattern>
+                                            <value>**BNDIAGNOSTIC-${regexID}**</value>
+                                        </substitution>
+                                    </substitutionList>
+                                </substitute>
+                            </actionList>
+                        </foreach>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="unpackHealthCheckTools">
+            <parameterList>
+            </parameterList>
+            <actionList>
+                <unpackDirectory>
+                    <component>health_check_tools</component>
+                    <folder>health_check_tools</folder>
+                    <origin>health-check-tools</origin>
+                    <destination>${system_temp_directory}</destination>
+                </unpackDirectory>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="parseHealthCheckToolsParameters">
+            <actionList>
+                <findFile abortOnError="0" showMessageOnError="0">
+                    <baseDirectory>${installdir}</baseDirectory>
+                    <pattern>apache{2,}/bin</pattern>
+                    <variable>apacheBinPath</variable>
+                </findFile>
+                <if>
+                    <actionList>
+                        <setInstallerVariable name="apache_root_directory" value=""/>
+                    </actionList>
+                    <conditionRuleList>
+                        <fileTest path="${apacheBinPath}" condition="not_exists"/>
+                    </conditionRuleList>
+                    <elseActionList>
+                        <dirName abortOnError="0" showMessageOnError="0" path="${apacheBinPath}" variable="apache_root_directory"/>
+                    </elseActionList>
+                </if>
+                <setInstallerVariable name="hostname" value=""/>
+                <setInstallerVariable name="apache_configuration_directory" value="${apache_root_directory}/conf"/>
+                <setInstallerVariable name="apache_server_port" value="80"/>
+                <setInstallerVariable name="apache_server_ssl_port" value="443"/>
+                <httpGet abortOnError="0" showMessageOnError="0" filename="/${system_temp_directory}/ipaddr" url="http://myip.bitnami.com"/>
+                <readFile abortOnError="0" showMessageOnError="0" name="hostname" path="${system_temp_directory}/ipaddr"/>
+                <deleteFile path="${system_temp_directory}/ipaddr"/>
+                <foreach variables="section key" values="General base_stack_key General hostname Apache apache_root_directory Apache apache_configuration_directory Apache apache_server_port Apache apache_server_ssl_port">
+                    <actionList>
+                        <iniFileGet>
+                            <file>${installdir}/properties.ini</file>
+                            <section>${section}</section>
+                            <key>${key}</key>
+                            <variable>keyValue</variable>
+                            <ruleList>
+                                <fileExists path="${installdir}/properties.ini"/>
+                            </ruleList>
+                        </iniFileGet>
+                        <setInstallerVariable name="${key}" value="${keyValue}">
+                            <ruleList>
+                                <compareText text="${keyValue}" logic="does_not_equal" value=""/>
+                            </ruleList>
+                        </setInstallerVariable>
+                        <globalVariables names="${key}"/>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="runHealthCheckTool">
+            <parameterList>
+                <stringParameter name="tool"/>
+                <stringParameter name="parameters"/>
+                <stringParameter name="progress"/>
+                <stringParameter name="toolsVariable"/>
+                <stringParameter name="logsVariable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${toolsVariable} ${logsVariable}"/>
+                <actionGroup>
+                    <actionList>
+                        <showProgressDialog>
+                            <actionList>
+                                <runProgram progressText="${progress}" abortOnError="0" showMessageOnError="0">
+                                    <workingDirectory>${system_temp_directory}/health-check-tools/</workingDirectory>
+                                    <program>./${tool}</program>
+                                    <programArguments>${parameters}</programArguments>
+                                </runProgram>
+                                <addTextToFile file="${system_temp_directory}/health-check-tools/${tool}.log" text="${program_stderr}"/>
+                                <addTextToFile file="${system_temp_directory}/health-check-tools/${tool}.log" text="${program_stdout}"/>
+                                <setInstallerVariable name="${toolsVariable}">
+                                    <value>${${toolsVariable}} - ${tool}
+</value>
+                                </setInstallerVariable>
+                                <setInstallerVariable name="${logsVariable}">
+                                    <value>${${logsVariable}} ${system_temp_directory}${platform_path_separator}health-check-tools${platform_path_separator}${tool}.log
+</value>
+                                </setInstallerVariable>
+
+                            </actionList>
+                        </showProgressDialog>
+                    </actionList>
+                </actionGroup>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticAddSystemInfo">
+            <parameterList>
+                <directoryParameter name="path"/>
+                <directoryParameter name="info"/>
+            </parameterList>
+            <actionList>
+                <foreach variables="type key value" values="${info}">
+                    <actionList>
+                        <addTextToFile file="${path}/system_info.properties">
+                            <text>${key} = ${value}
+</text>
+                            <ruleList>
+                                <compareText text="${type}" logic="equals" value="system_info"/>
+                            </ruleList>
+                        </addTextToFile>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="addPermissionAndOwnershipInfo">
+            <parameterList>
+                <directoryParameter name="path"/>
+                <directoryParameter name="info"/>
+                <directoryParameter name="installdir"/>
+            </parameterList>
+            <actionList>
+                <createDirectory path="${path}/permissions"/>
+                <foreach variables="type component file" values="${info}">
+                    <actionList>
+                        <renameFile abortOnError="0" showMessageOnError="0" origin="${file}" destination="${path}/permissions/${component}.permissions">
+                            <ruleList>
+                                <compareText text="${type}" logic="equals" value="acl"/>
+                            </ruleList>
+                        </renameFile>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="runCommands">
+            <parameterList>
+                <directoryParameter name="path"/>
+            </parameterList>
+            <actionList>
+                <actionGroup abortOnError="0" showMessageOnError="0">
+                    <actionList>
+                        <!-- Extract and run the bndiagnostic tool -->
+                        <unpackDirectory destination="${system_temp_directory}" component="bndiagnostic_tool" origin="bndiagnostic" folder="bndiagnostic" />
+                        <runProgram workingDirectory="${system_temp_directory}/bndiagnostic" program="./bndiagnostic.sh" programArguments="--secure-output --output-directory ${path}"/>
+                        <actionGroup>
+                            <actionList>
+                                <showText>
+                                    <text>The bndiagnostic tool has finished searching for errors and has found some issues that might be related to yours. The output will be shown on the next page:
+                                    </text>
+                                </showText>
+                                <showText>
+                                    <text>
+===== Begin of bndiagnostic tool output =====
+
+${program_stdout}
+
+===== End of bndiagnostic tool output =====
+
+                                    </text>
+                                </showText>
+                            </actionList>
+                            <ruleList>
+                                <compareText text="${installer_ui}" logic="equals" value="text"/>
+                                <compareText text="${program_stdout}" logic="contains" value="Found possible issues"/>
+                            </ruleList>
+                        </actionGroup>
+                        <deleteFile path="${system_temp_directory}/bndiagnostic"/>
+                    </actionList>
+                    <ruleList>
+                        <fileExists path="/opt/bitnami/properties.ini"/>
+                        <platformTest type="linux" />
+                    </ruleList>
+                </actionGroup>
+                <iniFileGet file="${installdir}/bndiagnostic-regex.ini" key="IDS" section="bndiagnosticCommands" variable="regExps"/>
+                <unpackFile component="bndiagnostic_files" destination="${system_temp_directory}" folder="bndiagnostic_commands_file" origin="commands.properties"/>
+                <setInstallerVariable name="commandsFile" value="${system_temp_directory}/commands.properties"/>
+                <propertiesFileGet file="${commandsFile}" key="commands" variable="commands"/>
+                <foreach variables="number" values="${commands}">
+                    <actionList>
+                        <foreach variables="property" values="command arguments description workdir platform outputfile">
+                            <actionList>
+                                <propertiesFileGet file="${commandsFile}" key="${number}.${property}" variable="command_${number}_${property}"/>
+                            </actionList>
+                        </foreach>
+                        <runProgram abortOnError="0" showMessageOnError="0" wrapInScript="1">
+                            <workingDirectory>${command_${number}_workdir}</workingDirectory>
+                            <program>${command_${number}_command}</program>
+                            <programArguments>${command_${number}_arguments}</programArguments>
+                            <ruleList>
+                                <platformTest type="${command_${number}_platform}"/>
+                            </ruleList>
+                        </runProgram>
+                        <setInstallerVariable name="outputText" value=""/>
+                        <if>
+                            <actionList>
+                                <setInstallerVariable name="outputText">
+                                    <value>
+Output:
+
+${program_stdout}
+${program_stderr}
+                                    </value>
+                                </setInstallerVariable>
+                            </actionList>
+                            <conditionRuleList>
+                                <compareValues value1="${program_exit_code}" value2="0" logic="equals"/>
+                            </conditionRuleList>
+                            <elseActionList>
+                                <setInstallerVariable name="outputText">
+                                    <value>Error: ${program_stderr}
+Exitcode: ${program_exit_code}
+                                    </value>
+                                </setInstallerVariable>
+                            </elseActionList>
+                        </if>
+                        <actionGroup>
+                            <actionList>
+                                <addTextToFile>
+                                    <file>${path}/${command_${number}_outputfile}</file>
+                                    <text>
+-----------------------------------
+${command_${number}_description}
+-----------------------------------
+Running: ${command_${number}_command} ${command_${number}_arguments}
+In: ${command_${number}_workdir}
+${outputText}
+                                    </text>
+                                </addTextToFile>
+                                <foreach variables="regexID" values="${regExps}">
+                                    <actionList>
+                                        <iniFileGet file="${installdir}/bndiagnostic-regex.ini" section="bndiagnosticCommands" key="${regexID}" variable="regExp"/>
+                                        <substitute type="regexp" abortOnError="0" showMessageOnError="0">
+                                            <files>${path}/${command_${number}_outputfile}</files>
+                                            <substitutionList>
+                                                <substitution>
+                                                    <pattern>${regExp}</pattern>
+                                                    <value>**BNDIAGNOSTIC-${regexID}**</value>
+                                                </substitution>
+                                            </substitutionList>
+                                        </substitute>
+                                    </actionList>
+                                </foreach>
+                            </actionList>
+                            <ruleList>
+                                <platformTest type="${command_${number}_platform}"/>
+                                <fileTest path="${command_${number}_workdir}"/>
+                            </ruleList>
+                        </actionGroup>
+                    </actionList>
+                </foreach>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticCreateArchive">
+            <parameterList>
+                <directoryParameter name="targetPath"/>
+                <directoryParameter name="installdir"/>
+                <directoryParameter name="info"/>
+            </parameterList>
+            <actionList>
+                <showProgressDialog title="Creating archive, this may take some time">
+                    <actionList>
+                        <createDirectory path="${targetPath}"/>
+                        <!-- Extract the bndiagnostic regexp ini file -->
+                        <unpackFile destination="${installdir}" component="bndiagnostic_files" folder="bndiagnostic_regexp_file" origin="bndiagnostic-regex.ini">
+                            <ruleList>
+                                <fileExists path="${installdir}/bndiagnostic-regex.ini" negate="1"/>
+                            </ruleList>
+                        </unpackFile>
+                        <bndiagnosticAddHealthCheckToolsInfo installdir="${installdir}" path="${targetPath}"/>
+                        <bndiagnosticAddSystemInfo path="${targetPath}" info="${info}"/>
+                        <bndiagnosticAddInstallerLogs path="${targetPath}"/>
+                        <addPermissionAndOwnershipInfo path="${targetPath}" info="${info}" >
+                            <ruleList>
+                                <platformTest type="unix"/>
+                            </ruleList>
+                        </addPermissionAndOwnershipInfo>
+                        <runCommands path="${targetPath}">
+                            <ruleList>
+                                <isFalse value="${build_run}"/>
+                            </ruleList>
+                        </runCommands>
+                        <foreach variables="type" values="logs conf priv">
+                            <actionList>
+                                <bndiagnosticCopyFiles installdir="${installdir}" path="${targetPath}" info="${info}" type="${type}"/>
+                            </actionList>
+                        </foreach>
+                    </actionList>
+                </showProgressDialog>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticDefineArchiveName">
+            <parameterList>
+                <stringParameter name="stackId"/>
+                <stringParameter name="nameVariable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${nameVariable}"/>
+                <createTimeStamp format="%Y%m%d-%H%M%S" variable="bndiagnostic_timestamp"/>
+                <setInstallerVariable name="${nameVariable}" value="bitnami-${stackId}-info-${bndiagnostic_timestamp}-${installer_pid}"/>
+            </actionList>
+        </actionDefinition>
+        <actionDefinition name="bndiagnosticUpload">
+            <parameterList>
+                <stringParameter name="stackId"/>
+                <fileParameter name="file"/>
+                <stringParameter name="apiKey"/>
+                <stringParameter name="resultVariable"/>
+            </parameterList>
+            <actionList>
+                <globalVariables names="${resultVariable}"/>
+                <setInstallerVariable name="pattern" value=".*?ticket_id=([a-z0-9-]+).*?"/>
+                <setInstallerVariable name="support_uploader_binary" value="support-uploader-${platform_name}"/>
+                <!-- Extract the support uploader tool -->
+                <unpackFile destination="${system_temp_directory}" component="bndiagnostic_files" folder="support_uploader" origin="support-uploader/${support_uploader_binary}"/>
+                <!-- Run the support uploader and get the ticket id code -->
+                <runProgram program="${system_temp_directory}/${support_uploader_binary}" programArguments="--stack-id &quot;${stackId}&quot; &quot;${file}&quot;" abortOnError="0" showMessageOnError="0" stdin="${apiKey}&#xA;"/>
+                <setInstallerVariable name="${resultVariable}" value=""/>
+                <setInstallerVariableFromRegEx name="${resultVariable}" pattern="${pattern}" substitution="\1">
+                    <text>${program_stdout}</text>
+                    <ruleList>
+                        <regExMatch logic="matches" pattern="${pattern}" text="${program_stdout}"/>
+                    </ruleList>
+                </setInstallerVariableFromRegEx>
+                <deleteFile path="${system_temp_directory}/${support_uploader_binary}"/>
+            </actionList>
+        </actionDefinition>
+    </functionDefinitionList>
+</component>

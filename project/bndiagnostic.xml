@@ -1,0 +1,387 @@
+<project>
+    <fullName>Bitnami Diagnostic Tool</fullName>
+    <shortName>bndiagnostic</shortName>
+    <installerFilename>${product_shortname}.${platform_exec_suffix}</installerFilename>
+    <vendor>Bitnami</vendor>
+    <allowComponentSelection>0</allowComponentSelection>
+    <allowWindowResize>1</allowWindowResize>
+    <createUninstaller>0</createUninstaller>
+    <enableSslSupport>1</enableSslSupport>
+    <enableRollback>0</enableRollback>
+    <enableDebugger>0</enableDebugger>
+    <startMenuGroupName></startMenuGroupName>
+    <logoImage>images/vmtools.png</logoImage>
+    <leftImage>images/left.png</leftImage>
+    <height>393</height>
+    <removeLogFile>1</removeLogFile>
+    <disableSplashScreen>1</disableSplashScreen>
+    <customLanguageFileList>
+        <language code="en" file="bndiagnostic-en.lng"/>
+    </customLanguageFileList>
+    <componentList>
+        <include file="base-functions.xml"/>
+        <include file="bndiagnostic-functions.xml"/>
+        <include file="vmtools-auto-update.xml"/>
+        <include file="health-check-tools.xml"/>
+        <component name="bndiagnostic_files" selected="1" canBeEdited="0" show="0">
+            <folderList>
+                <folder name="support_uploader" destination="${system_temp_directory}">
+                    <distributionFileList>
+                        <distributionDirectory origin="support-uploader"/>
+                    </distributionFileList>
+                    <ruleList>
+                        <!-- Never install, only extract when required -->
+                        <isTrue value="0"/>
+                    </ruleList>
+                </folder>
+                <folder name="bndiagnostic_regexp_file" destination="${installdir}">
+                    <distributionFileList>
+                        <distributionDirectory origin="bndiagnostic-regex.ini"/>
+                    </distributionFileList>
+                    <ruleList>
+                        <!-- Never install, only extract when required -->
+                        <isTrue value="0"/>
+                    </ruleList>
+                </folder>
+                <folder name="bndiagnostic_commands_file" destination="${installdir}">
+                    <distributionFileList>
+                        <distributionDirectory origin="commands.properties"/>
+                    </distributionFileList>
+                    <ruleList>
+                        <!-- Never install, only extract when required -->
+                        <isTrue value="0"/>
+                    </ruleList>
+                </folder>
+            </folderList>
+        </component>
+        <component name="bndiagnostic_tool" selected="1" canBeEdited="0" show="0">
+            <folderList>
+                <folder name="bndiagnostic" destination="${system_temp_directory}">
+                    <distributionFileList>
+                        <distributionDirectory origin="bndiagnostic"/>
+                    </distributionFileList>
+                    <ruleList>
+                        <!-- Never install, only extract when required -->
+                        <isTrue value="0"/>
+                    </ruleList>
+                </folder>
+            </folderList>
+        </component>
+    </componentList>
+    <preBuildActionList>
+        <bndiagnosticLoadFallbackMetadata componentsVariable="fallback_components" metadataVariable="fallback_metadata"/>
+    </preBuildActionList>
+    <initializationActionList>
+        <throwError text="Unattended mode is not supported!">
+            <ruleList>
+                <compareText text="${installer_ui}" logic="equals" value="unattended"/>
+                <isTrue value="${build_run}"/>
+            </ruleList>
+        </throwError>
+    </initializationActionList>
+    <preInstallationActionList>
+        <checkIfInstalldir path="${installer_directory}" />
+        <dirName path="${installer_directory}" variable="installerParentDir"/>
+        <checkIfInstalldir path="${installerParentDir}">
+            <ruleList>
+                <isFalse value="${validInstallationFound}"/>
+            </ruleList>
+        </checkIfInstalldir>
+        <checkIfInstalldir path="/opt/bitnami">
+            <ruleList>
+                <isFalse value="${validInstallationFound}"/>
+            </ruleList>
+        </checkIfInstalldir>
+        <actionGroup>
+            <actionList>
+                <setInstallerVariable name="baseDirectory" value="${installdir}/bndiagnostic/"/>
+                <bndiagnosticCollectInformation installdir="${installdir}" dataVariable="archive_info"/>
+                <bndiagnosticCreateArchive installdir="${installdir}" targetPath="${baseDirectory}/original-data" info="${archive_info}"/>
+                <exit/>
+            </actionList>
+            <ruleList>
+                <isTrue value="${build_run}"/>
+                <compareText text="${installer_ui}" logic="equals" value="unattended"/>
+                <isTrue value="${validInstallationFound}"/>
+            </ruleList>
+        </actionGroup>
+        <actionGroup>
+            <actionList>
+                <runUpdater bndiagnosticTargetDir="${bndiagnosticTargetDir}" ruleEvaluationLogic="or">
+                    <ruleList>
+                        <platformTest type="linux"/>
+                    </ruleList>
+                </runUpdater>
+                <setInstallerVariable name="next_page" value="ask_for_confirmation"/>
+            </actionList>
+            <ruleList>
+                <isTrue value="${validInstallationFound}"/>
+            </ruleList>
+        </actionGroup>
+        <!-- Print information about default installation directory, depending on the platform -->
+        <foreach variables="platform message">
+            <values>linux "The default installation directory for Linux installers is a directory inside /opt."</values>
+            <actionList>
+                <setInstallerVariable name="platform_message" value="${message}">
+                    <ruleList>
+                        <platformTest type="${platform}"/>
+                    </ruleList>
+                </setInstallerVariable>
+            </actionList>
+        </foreach>
+        <setInstallerVariable name="base_output_directory" value="${system_temp_directory}"/>
+        <!-- Set output file directory -->
+        <generateRandomValue length="16" variable="output_random_value"/>
+        <setInstallerVariable name="output_directory" value="${base_output_directory}${platform_path_separator}bndiagnostic-${output_random_value}"/>
+    </preInstallationActionList>
+    <parameterList>
+        <booleanParameter name="dry_run" default="0" ask="0"/>
+        <directoryParameter name="installdir" ask="0"/>
+        <booleanParameter name="bndiagnosticTargetDir" value="0" ask="0"/>
+        <booleanParameter name="validInstallationFound" value="0" ask="0"/>
+        <stringParameter name="upload_api_key" ask="0"/>
+        <booleanParameter name="runSMTPTool" ask="0" value="0"/>
+        <!-- Directory containing a Bitnami or XAMPP installation -->
+        <directoryParameter>
+            <name>base_installdir</name>
+            <title>Bitnami directory</title>
+            <explanation>Please type a directory that contains a Bitnami installation. ${platform_message}</explanation>
+            <description>Bitnami directory</description>
+            <default>${installdir}</default>
+            <allowEmptyValue>1</allowEmptyValue>
+            <mustExist>1</mustExist>
+            <validationActionList>
+                <!-- macOS XAMPP contains the installdir inside a "xamppfiles" directory -->
+                <!-- This way we will allow the user to choose both "installdir" and "installdir/xamppfiles" -->
+                <setInstallerVariable name="installdir" value="${base_installdir.unix}"/>
+                <!-- The detected installdir must be valid -->
+                <throwError text="The path does not seem to contain a valid Bitnami installation! Make sure you have proper access rights.">
+                    <ruleList>
+                        <isValidBitnamiInstall path="${installdir}" negate="1"/>
+                        <isValidXamppInstall path="${installdir}" negate="1"/>
+                        <isValidBashInstall path="${installdir}" negate="1"/>
+                    </ruleList>
+                </throwError>
+            </validationActionList>
+            <postShowPageActionList>
+                <runUpdater bndiagnosticTargetDir="${base_installdir}" ruleEvaluationLogic="or">
+                    <ruleList>
+                        <platformTest type="linux"/>
+                    </ruleList>
+                </runUpdater>
+            </postShowPageActionList>
+        </directoryParameter>
+        <!-- Ask the user for confirmation, and create the archive afterwards -->
+        <licenseParameter>
+            <name>ask_for_confirmation</name>
+            <title>Confirm upload</title>
+            <insertAfter>base_installdir</insertAfter>
+            <fileEncoding>utf-8</fileEncoding>
+            <file>confirmation.txt</file>
+            <description>Please read the following information carefully.</description>
+            <postShowPageActionList>
+                <setInstallerVariable name="healthCheckLogs" value=""/>
+                <unpackHealthCheckTools/>
+                <parseHealthCheckToolsParameters/>
+                <setInstallerVariable name="executedTools" value=""/>
+                <setInstallerVariable name="next_page" value="smtp_recipient_page">
+                    <ruleList>
+                      <isTrue value="${runSMTPTool}"/>
+                    </ruleList>
+                </setInstallerVariable>
+                <setInstallerVariable name="next_page" value="custom_final_page">
+                    <ruleList>
+                        <isTrue value="${runSMTPTool}" negate="1"/>
+                    </ruleList>
+                </setInstallerVariable>
+            </postShowPageActionList>
+        </licenseParameter>
+        <parameterGroup>
+            <name>smtp_recipient_page</name>
+            <title>SMTP Test Recipient</title>
+            <explanation>By default, a mail will be sent to test@example.com. If you would like to test the mail delivery, please indicate a valid mail recipient address and check your inbox after running the test. NOTE: Check the recipient inbox when providing a valid one.
+            </explanation>
+            <parameterList>
+                 <stringParameter>
+                    <name>mail_recipient</name>
+                    <description>Mail Recipient</description>
+                </stringParameter>
+            </parameterList>
+            <postShowPageActionList>
+                <setInstallerVariable name="isSupportedStack" value="0"/>
+                <setInstallerVariable name="isSupportedStack" value="1">
+                    <ruleEvaluationLogic>or</ruleEvaluationLogic>
+                    <ruleList>
+                        <compareText text="wordpress redmine" logic="contains" value="${base_stack_key}"></compareText>
+                    </ruleList>
+                </setInstallerVariable>
+                <if>
+                    <conditionRuleList>
+                        <isTrue value="${isSupportedStack}"/>
+                    </conditionRuleList>
+                    <actionList>
+                        <showProgressDialog>
+                            <actionList>
+                                <runHealthCheckTool>
+                                    <logsVariable>healthCheckLogs</logsVariable>
+                                    <toolsVariable>executedTools</toolsVariable>
+                                    <progress>Running smtp-checker tool</progress>
+                                    <tool>smtp-checker</tool>
+                                    <parameters>-application ${base_stack_key} -install_dir ${installdir} -mail_recipient ${mail_recipient}</parameters>
+                                </runHealthCheckTool>
+                            </actionList>
+                        </showProgressDialog>
+                        <setInstallerVariable name="health_check_tools_info">
+                            <value>The following tools have been successfully exectuted ${executedTools}</value>
+                        </setInstallerVariable>
+                    </actionList>
+                    <elseActionList>
+                        <setInstallerVariable name="next_page" value="smtp_parameters_page"/>
+                    </elseActionList>
+                </if>
+            </postShowPageActionList>
+        </parameterGroup>
+        <parameterGroup>
+            <name>smtp_parameters_page</name>
+            <title>SMTP Parameters</title>
+            <explanation>To run the SMTP health checker the following fields are required:</explanation>
+            <parameterList>
+                <stringParameter allowEmptyValue="0" name="smtp_host" description="SMTP server hostname" default="localhost"/>
+                <stringParameter allowEmptyValue="0" name="smtp_port" description="SMTP server port" default="25"/>
+                <stringParameter allowEmptyValue="0" name="smtp_user" description="SMTP user" default="user@example.com"/>
+                <passwordParameter allowEmptyValue="1" askForConfirmation="0" name="smtp_password" description="SMTP user's password"/>
+            </parameterList>
+            <postShowPageActionList>
+                <showProgressDialog>
+                    <actionList>
+                        <runHealthCheckTool>
+                            <logsVariable>healthCheckLogs</logsVariable>
+                            <toolsVariable>executedTools</toolsVariable>
+                            <progress>Running smtp-checker tool</progress>
+                            <tool>smtp-checker</tool>
+                            <parameters>-smtp_host ${smtp_host} -smtp_port ${smtp_port} -smtp_user ${smtp_user} -smtp_password ${smtp_password} -mail_recipient ${mail_recipient} -secure_output</parameters>
+                        </runHealthCheckTool>
+                    </actionList>
+                </showProgressDialog>
+            </postShowPageActionList>
+        </parameterGroup>
+        <infoParameter name="custom_final_page" title="Diagnostic bundle created successfully">
+            <value>The diagnostic bundle file was successfully created, but the automatic upload to Bitnami servers failed. You will need to upload it to your Bitnami Support ticket manually. Please locate the following file in your file browser or in your terminal: ${base_output_directory}${platform_path_separator}${archive_name}.zip Exercise caution when uploading the resulting diagnostic bundle to public sites as it contains detailed diagnostic information.</value>
+            <preShowPageActionList>
+                <setInstallerVariable name="back_page" value="custom_final_page"/>
+                <setInstallerVariable name="ui.button(next).text" value="${msg(Installer.Button.Finish)}"/>
+                <showProgressDialog title="Running health check tools">
+                    <actionList>
+                        <runHealthCheckTool>
+                            <logsVariable>healthCheckLogs</logsVariable>
+                            <toolsVariable>executedTools</toolsVariable>
+                            <progress>Running ssl-checker tool</progress>
+                            <tool>ssl-checker</tool>
+                            <parameters>-apache-root ${apache_root_directory} -apache-conf ${apache_configuration_directory}/httpd.conf -hostname ${machine_hostname} -port ${apache_server_ssl_port}</parameters>
+                        </runHealthCheckTool>
+                    </actionList>
+                    <ruleList>
+                        <compareText text="${apache_root_directory}" logic="does_not_equal" value=""/>
+                    </ruleList>
+                </showProgressDialog>
+                <setInstallerVariable name="health_check_tools_info">
+                    <value>The following tools have been successfully executed: ${executedTools}</value>
+                </setInstallerVariable>
+                <showProgressDialog title="Collecting data">
+                    <actionList>
+		                    <actionGroup progressText="Please wait...">
+		                        <actionList>
+                                <bndiagnosticCollectInformation installdir="${installdir}" dataVariable="archive_info"/>
+                                <bndiagnosticDescribeCollectedInformation installdir="${installdir}" data="${archive_info}" textVariable="ask_for_confirmation_text" logsVariable="healthCheckLogs"/>
+
+                                <baseGetStackKey installdir="${installdir}" variable="base_stack_key"/>
+                                <bndiagnosticDefineArchiveName stackId="${base_stack_key}" nameVariable="archive_name"/>
+                                <bndiagnosticCreateArchive installdir="${installdir}" targetPath="${output_directory}/${archive_name}" info="${archive_info}"/>
+                                <setInstallerVariable name="excludedFiles" value=""/>
+                                <readFile showMessageOnError="1" abortOnError="0">
+                                    <name>excludedFiles</name>
+                                    <path>${output_directory}/${archive_name}/excluded.txt</path>
+                                    <ruleList>
+                                        <fileExists path="${output_directory}/${archive_name}/excluded.txt"/>
+                                    </ruleList>
+
+                                </readFile>
+                                <zip zipFile="${base_output_directory}/${archive_name}.zip" baseDirectory="${output_directory}" files="${output_directory}/${archive_name}" excludeFiles="*/.DS_Store"/>
+                                <deleteFile path="${output_directory}"/>
+                                <deleteFile path="${system_temp_directory}/health-check-tools"/>
+			                      </actionList>
+		                    </actionGroup>
+                    </actionList>
+                </showProgressDialog>
+                <!-- Upload the resulting file -->
+                <setInstallerVariable name="excludedFilesMessage" value=""/>
+                <setInstallerVariable name="excludedFilesMessage">
+                        <value>The files listed below are bigger than 10MB and have not been included, please notify the support agent.&#xA;&#xA;${excludedFiles}&#xA;</value>
+                    <ruleList>
+                        <stringTest text="${excludedFiles}" type="not_empty"/>
+                    </ruleList>
+                </setInstallerVariable>
+                <if>
+                    <conditionRuleList>
+                        <isFalse value="${dry_run}"/>
+                    </conditionRuleList>
+                    <actionList>
+                        <showProgressDialog title="Uploading archive, please wait...">
+                            <actionList>
+                                <bndiagnosticUpload stackId="${base_stack_key}" file="${base_output_directory}/${archive_name}.zip" apiKey="${upload_api_key}" resultVariable="upload_id"/>
+                                <actionGroup>
+                                    <actionList>
+                                        <setInstallerVariable name="parameter(custom_final_page).title" value="Diagnostic bundle uploaded successfully"/>
+                                        <setInstallerVariable name="parameter(custom_final_page).value">
+                                            <value>${excludedFilesMessage}The diagnostic bundle was uploaded successfully to the Bitnami servers. Please copy the following code:
+
+${upload_id}
+
+And paste it in your Bitnami Support ticket.
+</value>
+                                        </setInstallerVariable>
+                                        <deleteFile path="${base_output_directory}/${archive_name}.zip"/>
+                                    </actionList>
+                                    <ruleList>
+                                        <stringTest text="${upload_id}" type="not_empty"/>
+                                    </ruleList>
+                                </actionGroup>
+                            </actionList>
+                        </showProgressDialog>
+                    </actionList>
+                    <elseActionList>
+                        <unzip zipFile="${base_output_directory}/${archive_name}.zip" destinationDirectory="${base_installdir}"/>
+                        <deleteFile path="${base_output_directory}/${archive_name}.zip"/>
+                        <renameFile destination="${base_installdir}/bndiagnostic-output" origin="${base_installdir}/${archive_name}"/>
+                        <setInstallerVariable name="parameter(custom_final_page).title" value="Diagnostic bundle created successfully"/>
+                        <setInstallerVariable name="parameter(custom_final_page).value">
+                            <value>${excludedFilesMessage}The diagnostic bundle was created successfully. Please find it at
+
+${base_installdir}/bndiagnostic-output
+</value>
+                        </setInstallerVariable>
+                    </elseActionList>
+                </if>
+                <if>
+                    <actionList>
+                        <consoleWrite text="${parameter(custom_final_page).value}"/>
+                        <exit></exit>
+                    </actionList>
+                    <conditionRuleList>
+                        <compareText text="${installer_ui}" logic="equals" value="gui" negate="1"/>
+                    </conditionRuleList>
+                </if>
+            </preShowPageActionList>
+            <postShowPageActionList>
+                <exit/>
+            </postShowPageActionList>
+        </infoParameter>
+        <!-- To store defaults for each server (e.g. server logs patterns) -->
+        <stringParameter name="fallback_components" ask="0" cliOptionShow="0"/>
+        <stringParameter name="fallback_metadata" ask="0" cliOptionShow="0"/>
+        <!-- Used for copying original configuration files, allowing for successive runs for determining the changes performed to any of those files for gathering original data in unattended mode -->
+        <booleanParameter name="build_run" default="0" ask="0" cliOptionShow="0"/>
+        <!-- Directory to create output file -->
+        <directoryParameter name="output_directory" ask="0"/>
+    </parameterList>
+</project>

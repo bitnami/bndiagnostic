@@ -1,0 +1,6 @@
+Installer.Welcome.Title=Bitnami Diagnostic tool
+Installer.Welcome.Text=Welcome to the Bitnami Diagnostic tool.
+Installer.License.DoYouAccept=Do you accept?
+Installer.License.IAccept=Yes
+Installer.License.IDoNotAccept=No
+Installer.Installation.Question.Abort=Do you want to quit the bndiagnostic tool?

@@ -1,0 +1,8 @@
+This tool collects system information and files from a Bitnami stack into a
+diagnostic bundle file to be uploaded and reviewed by the Bitnami Team, for the
+sole purpose of providing you support for any issue you may find.
+
+The uploaded information will be automatically removed from our systems after 1
+month. In case you have any doubt regarding our privacy policy please check:
+
+https://www.vmware.com/help/privacy.html
