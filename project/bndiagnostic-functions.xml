@@ -20,7 +20,7 @@
                         <foreach variables="type" values="logs conf priv acl">
                             <actionList>
                                 <setInstallerVariable name="iterator_data" value=""/>
-                                <propertiesFileGet file="bndiagnostic-defaults.properties" key="${component}_${type}" variable="iterator_data" abortOnError="0" showMessageOnError="0"/>
+                                <propertiesFileGet file="${build_project_directory}/bndiagnostic-defaults.properties" key="${component}_${type}" variable="iterator_data" abortOnError="0" showMessageOnError="0"/>
                                 <setInstallerVariable name="${metadataVariable}" value="${${metadataVariable}} ${type} ${component} &quot;${iterator_data}&quot;">
                                     <ruleList>
                                         <stringTest text="${iterator_data}" type="not_empty"/>
