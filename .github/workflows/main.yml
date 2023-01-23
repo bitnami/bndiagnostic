@@ -14,16 +14,14 @@ jobs:
     env:
       INSTALLBUILDER: installbuilder
       INSTALLBUILDER_LICENSE: ${{ secrets.INSTALLBUILDER_LICENSE }}
+      INSTALLBUILDER_VERSION: ${{ secrets.INSTALLBUILDER_VERSION }}
       UPLOAD_API_KEY: ${{ secrets.UPLOAD_API_KEY }}
     steps:
       - uses: actions/checkout@v3
-      - name: Get latest VMware InstallBuilder version
-        id: get-installbuilder-version
-        run: printf "INSTALLBUILDER_VERSION=%s\n" $(curl -sSL https://installbuilder.com/download-installbuilder-for-qt-step-2.html | grep -oE 'installbuilder-qt-enterprise-([^-]+)-linux-x64-installer.run' | sed -E 's/installbuilder-qt-enterprise-([^-]+)-linux-x64-installer.run/\1/') >> $GITHUB_OUTPUT
       - name: Download and install VMware InstallBuilder
         run: |
           set -e
-          curl -sSL https://installbuilder.com/installbuilder-qt-enterprise-${{ steps.get-installbuilder-version.outputs.INSTALLBUILDER_VERSION }}-linux-x64-installer.run -o installbuilder.run
+          curl -sSL https://installbuilder.com/installbuilder-qt-enterprise-$INSTALLBUILDER_VERSION-linux-x64-installer.run -o installbuilder.run
           chmod a+x installbuilder.run
           ./installbuilder.run --prefix "$INSTALLBUILDER" --mode unattended
           echo "$INSTALLBUILDER_LICENSE" > "${INSTALLBUILDER}/license.xml"
