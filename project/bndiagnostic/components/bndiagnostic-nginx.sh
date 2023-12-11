@@ -13,7 +13,7 @@ function checkErrors {
     if [ ! -z "$pagespeed_errors" ]; then
         no_issues=false
         format "suggest" "Found recent Pagespeed related error messages in the Nginx error log:$(format "wrap" "${pagespeed_errors}")We suggest disabling pagespeed and check if that improves the behavior. Please check the following guide to disable Pagespeed:"
-        format "link" "https://docs.bitnami.com/aws/apps/wordpress-pro/administration/use-pagespeed-nginx/"
+        format "link" "https://docs.bitnami.com/general/apps/mattermost/administration/use-pagespeed-nginx/"
     fi
     if [ ! -z "$cert_mismatch_error" ]; then
         no_issues=false
@@ -23,7 +23,7 @@ function checkErrors {
     if [ ! -z "$other_errors" ]; then
         no_issues=false
         format "suggest" "Found recent error or warning messages in the Nginx error log.$(format "wrap" "${other_errors}")Please check the following guide to troubleshoot server issues:"
-        format "link" "https://docs.bitnami.com/installer/infrastructure/nginx/troubleshooting/"
+        format "link" "https://docs.bitnami.com/general/infrastructure/nginx/troubleshooting/"
     fi
     if [ -f ${nginx_conf} ]; then
         if command -v nginx >/dev/null 2>&1; then

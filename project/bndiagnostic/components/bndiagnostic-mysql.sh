@@ -7,7 +7,7 @@ function checkErrors {
     if [ ! -z "$errors" ]; then
         no_issues=false
         format "suggest" "Found recent error messages in the MySQL error log:$(format "wrap" "${errors}")Please check the following guide to troubleshoot MySQL issues:"
-        format "link" "https://docs.bitnami.com/aws/apps/wordpress/troubleshooting/debug-errors-mysql/"
+        format "link" "https://docs.bitnami.com/general/apps/wordpress/troubleshooting/debug-errors-mysql/"
     fi
 }
 
