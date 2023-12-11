@@ -15,10 +15,6 @@ function checkResources {
     if [ "$free_memory_percentage" -lt 20 ]; then
         no_issues=false
         format "suggest" "Your instance has little available RAM memory.$(format "wrap" "${memory_example}")You could try to increase your instance's memory. Please check your cloud provider's documentation for more information."
-        if [ ! $swap_enabled ]; then
-            format "suggest" "You can also enable swap memory to improve performance."
-            format "link" "https://docs.bitnami.com/installer/faq/linux-faq/administration/increase-memory-linux/"
-        fi
     else
         if [ $swap_enabled ]; then
             free_swap_percentage=$(LC_ALL="C" LANG="C" free | grep -i swap | awk '{print int($4/$2 * 100.0)}')

@@ -58,7 +58,7 @@ function checkMostActive {
         done <<< "$unique_entries"
         if is_boolean_yes "$isHighNumber"; then
             format "suggest" "A high number of incoming requests originate from one or more unique IP addresses. This could indicate a bot attack. The following guide shows how to check for and block suspicious IP addresses."
-            format "link" "https://docs.bitnami.com/bch/apps/moodle/troubleshooting/deny-connections-bots-apache/"
+            format "link" "https://docs.bitnami.com/general/apps/wordpress/troubleshooting/deny-connections-bots-apache/"
         fi
     fi
 }

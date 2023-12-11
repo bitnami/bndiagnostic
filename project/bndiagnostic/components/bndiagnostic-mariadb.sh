@@ -7,7 +7,7 @@ function checkErrors {
     if [ ! -z "$errors" ]; then
         no_issues=false
         format "suggest" "Found recent error messages in the MariaDB error log:$(format "wrap" "${errors}")Please check the following guide to troubleshoot MariaDB issues:"
-        format "link" "https://docs.bitnami.com/aws/apps/wordpress/troubleshooting/debug-errors-mariadb/"
+        format "link" "https://docs.bitnami.com/general/apps/wordpress/troubleshooting/debug-errors-mariadb/"
     fi
 }
 
