@@ -92,6 +92,7 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-duration-seconds: 1200
           role-session-name: MySessionName
+          role-skip-session-tagging: true
       - name: Upload to S3 bucket
         run: |
           set -e
