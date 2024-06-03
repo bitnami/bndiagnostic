@@ -20,8 +20,8 @@ jobs:
       - name: Download and install InstallBuilder
         run: |
           set -e
-          INSTALLBUILDER_VERSION=$(curl --fail-with-body https://installbuilder.com/VERSION)
-          curl --fail-with-body -sSL https://releases.installbuilder.com/installbuilder/installbuilder-qt-enterprise-$INSTALLBUILDER_VERSION-linux-x64-installer.run -o installbuilder.run
+          INSTALLBUILDER_VERSION=$(curl --fail https://installbuilder.com/VERSION)
+          curl --fail -sSL https://releases.installbuilder.com/installbuilder/installbuilder-qt-enterprise-$INSTALLBUILDER_VERSION-linux-x64-installer.run -o installbuilder.run
           chmod a+x installbuilder.run
           ./installbuilder.run --prefix "$INSTALLBUILDER" --mode unattended
           echo "$INSTALLBUILDER_LICENSE" > "${INSTALLBUILDER}/license.xml"
