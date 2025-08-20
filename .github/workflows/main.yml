@@ -1,118 +1,22 @@
-name: Release
+name: CI
 on:
-  push:
-    branches:
-      - main
-  release:
-    types: [published]
-  pull_request:
-  workflow_dispatch:
+  pull_request_target:
 # Remove all permissions by default
 permissions: {}
 jobs:
   build:
     runs-on: ubuntu-latest
     name: Build
-    env:
-      INSTALLBUILDER: installbuilder
-      INSTALLBUILDER_LICENSE: ${{ secrets.INSTALLBUILDER_LICENSE }}
-      UPLOAD_API_KEY: ${{ secrets.UPLOAD_API_KEY }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
       - name: Download and install InstallBuilder
-        run: |
-          set -e
-          INSTALLBUILDER_VERSION=$(curl --fail https://installbuilder.com/VERSION)
-          curl --fail -sSL https://releases.installbuilder.com/installbuilder/installbuilder-qt-enterprise-$INSTALLBUILDER_VERSION-linux-x64-installer.run -o installbuilder.run
-          chmod a+x installbuilder.run
-          ./installbuilder.run --prefix "$INSTALLBUILDER" --mode unattended
-          echo "$INSTALLBUILDER_LICENSE" > "${INSTALLBUILDER}/license.xml"
+        uses: ./.github/actions/setup-installbuilder@main
+        with:
+          license: ${{ secrets.INSTALLBUILDER_LICENSE }}
       - name: Build project
-        run: ./scripts/build.sh
-      - name: Copy release files
-        run: cp output-*/bndiagnostic-*.run output-amd64/bndiagnostic-update.xml .
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: ./.github/actions/build@main
         with:
-          name: release
-          path: |
-            bndiagnostic-update.xml
-            bndiagnostic-*.run
-  release:
-    needs: ['build']
-    if: github.repository == 'bitnami/bndiagnostic' && startsWith(github.ref, 'refs/tags/')
-    runs-on: ubuntu-latest
-    name: Release
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          path: ./artifacts
-      - name: Set tag name
-        id: get-tag-name
-        run: printf "GITHUB_TAG=%s\n" ${GITHUB_REF#refs/*/} >> $GITHUB_OUTPUT
-      - name: Check tool version is the same as tag
-        run: |
-          set -e
-          tag_name="${{ steps.get-tag-name.outputs.GITHUB_TAG }}"
-          version_name="$(cat VERSION)"
-          if [ "$tag_name" != "v${version_name}" ]; then
-            echo "The tool version v${version_name} does not match the tag: ${tag_name}"
-            exit 1
-          fi
-      - name: Release
-        run: |
-          set -e
-          assets=( ./artifacts/release/* )
-          tag_name="${{ steps.get-tag-name.outputs.GITHUB_TAG }}"
-          if gh release view "$tag_name" >/dev/null 2>/dev/null; then
-            echo "Release $tag_name already exists. Updating"
-            gh release upload "$tag_name" "${assets[@]}"
-          else
-            echo "Creating new release $tag_name"
-            gh release create -t "$tag_name" "$tag_name" --generate-notes "${assets[@]}"
-          fi
-  upload:
-    needs: ['build', 'release']
-    runs-on: ubuntu-latest
-    name: Upload
-    env:
-      S3_URL: ${{ secrets.S3_URL }}
-    steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          path: ./artifacts
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-duration-seconds: 1200
-          role-session-name: MySessionName
-          role-skip-session-tagging: true
-      - name: Upload to S3 bucket
-        run: |
-          set -e
-          version_name="$(cat VERSION)"
-          cd ./artifacts/release
-          for arch in arm64 x64; do
-            aws s3 cp --acl public-read bndiagnostic-$version_name-linux-$arch.run $S3_URL/$version_name/
-            aws s3 cp --acl public-read bndiagnostic-$version_name-linux-$arch.run $S3_URL/latest/bndiagnostic-linux-$arch.run
-          done
-          aws s3 cp --acl public-read bndiagnostic-update.xml $S3_URL/latest/
-  notify:
-    name: Send notification
-    needs:
-      - release
-      - upload
-    if: ${{ always() && (needs.release.result == 'failure' || needs.upload.result == 'failure') }}
-    uses: bitnami/support/.github/workflows/gchat-notification.yml@main
-    with:
-      workflow: ${{ github.workflow }}
-      job-url: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-    secrets:
-      webhook-url: ${{ secrets.GCHAT_CONTENT_ALERTS_WEBHOOK_URL }}
+          upload-api-key: ${{ secrets.UPLOAD_API_KEY }}

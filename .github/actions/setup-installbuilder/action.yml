@@ -1,0 +1,25 @@
+name: Setup InstallBuilder
+description: Download and install InstallBuilder
+inputs:
+  path:
+    description: InstallBuilder installation path
+    required: true
+    default: installbuilder
+  license:
+    description: InstallBuilder license
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Download and install InstallBuilder
+      shell: bash
+      env:
+        INSTALLBUILDER: ${{ inputs.path }}
+        INSTALLBUILDER_LICENSE: ${{ inputs.license }}
+      run: |
+        set -e
+        INSTALLBUILDER_VERSION=$(curl --fail https://installbuilder.com/VERSION)
+        curl --fail -sSL https://releases.installbuilder.com/installbuilder/installbuilder-qt-enterprise-$INSTALLBUILDER_VERSION-linux-x64-installer.run -o installbuilder.run
+        chmod a+x installbuilder.run
+        ./installbuilder.run --prefix "$INSTALLBUILDER" --mode unattended
+        echo "$INSTALLBUILDER_LICENSE" > "${INSTALLBUILDER}/license.xml"
