@@ -1,0 +1,24 @@
+name: Build
+description: Build bndiagnostic using installbuilder
+inputs:
+  installbuilder-path:
+    description: InstallBuilder installation path
+    required: true
+    default: installbuilder
+  upload-api-key:
+    description: InstallBuilder api key
+    required: true
+runs:
+  using: "composite"
+  steps:
+    - name: Set GitHub Path
+      shell: bash
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+      run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH
+    - name: Run build.sh
+      shell: bash
+      env:
+        INSTALLBUILDER: "${{ inputs.installbuilder-path }}"
+        UPLOAD_API_KEY: "${{ inputs.upload-api-key }}"
+      run: build.sh

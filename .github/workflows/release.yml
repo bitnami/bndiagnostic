@@ -12,22 +12,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     name: Build
-    env:
-      INSTALLBUILDER: installbuilder
-      INSTALLBUILDER_LICENSE: ${{ secrets.INSTALLBUILDER_LICENSE }}
-      UPLOAD_API_KEY: ${{ secrets.UPLOAD_API_KEY }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Download and install InstallBuilder
-        run: |
-          set -e
-          INSTALLBUILDER_VERSION=$(curl --fail https://installbuilder.com/VERSION)
-          curl --fail -sSL https://releases.installbuilder.com/installbuilder/installbuilder-qt-enterprise-$INSTALLBUILDER_VERSION-linux-x64-installer.run -o installbuilder.run
-          chmod a+x installbuilder.run
-          ./installbuilder.run --prefix "$INSTALLBUILDER" --mode unattended
-          echo "$INSTALLBUILDER_LICENSE" > "${INSTALLBUILDER}/license.xml"
+        uses: ./.github/actions/setup-installbuilder@main
+        with:
+          license: ${{ secrets.INSTALLBUILDER_LICENSE }}
       - name: Build project
-        run: ./scripts/build.sh
+        uses: ./.github/actions/build@main
+        with:
+          upload-api-key: ${{ secrets.UPLOAD_API_KEY }}
       - name: Copy release files
         run: cp output-*/bndiagnostic-*.run output-amd64/bndiagnostic-update.xml .
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
