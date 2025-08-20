@@ -14,8 +14,8 @@ runs:
     - name: Download and install InstallBuilder
       shell: bash
       env:
-        INSTALLBUILDER: "${{ inputs.path }}"
-        INSTALLBUILDER_LICENSE: "${{ inputs.license }}"
+        INSTALLBUILDER: ${{ inputs.path }}
+        INSTALLBUILDER_LICENSE: ${{ inputs.license }}
       run: |
         set -e
         INSTALLBUILDER_VERSION=$(curl --fail https://installbuilder.com/VERSION)

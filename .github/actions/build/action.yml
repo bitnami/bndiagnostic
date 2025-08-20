@@ -1,5 +1,5 @@
 name: Build
-description: Build bndiagnostic using installbuilder
+description: Build bndiagnostic using InstallBuilder
 inputs:
   installbuilder-path:
     description: InstallBuilder installation path
@@ -9,7 +9,7 @@ inputs:
     description: InstallBuilder api key
     required: true
 runs:
-  using: "composite"
+  using: composite
   steps:
     - name: Set GitHub Path
       shell: bash
@@ -19,6 +19,6 @@ runs:
     - name: Run build.sh
       shell: bash
       env:
-        INSTALLBUILDER: "${{ inputs.installbuilder-path }}"
-        UPLOAD_API_KEY: "${{ inputs.upload-api-key }}"
+        INSTALLBUILDER: ${{ inputs.installbuilder-path }}
+        UPLOAD_API_KEY: ${{ inputs.upload-api-key }}
       run: build.sh
