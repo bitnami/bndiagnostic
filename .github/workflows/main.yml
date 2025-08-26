@@ -13,10 +13,10 @@ jobs:
           ref: ${{ github.event.pull_request.head.ref }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
       - name: Download and install InstallBuilder
-        uses: bitnami/bndiagnostic/.github/actions/setup-installbuilder@5743032a60de0666adf1313a97c15288ed8c1de1
+        uses: bitnami/bndiagnostic/.github/actions/setup-installbuilder@37089c457b353412dc31e925820037b01aafa9dc
         with:
           license: ${{ secrets.INSTALLBUILDER_LICENSE }}
       - name: Build project
-        uses: bitnami/bndiagnostic/.github/actions/build@5743032a60de0666adf1313a97c15288ed8c1de1
+        uses: bitnami/bndiagnostic/.github/actions/build@37089c457b353412dc31e925820037b01aafa9dc
         with:
           upload-api-key: ${{ secrets.UPLOAD_API_KEY }}
