@@ -15,11 +15,11 @@ jobs:
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
       - name: Download and install InstallBuilder
-        uses: bitnami/bndiagnostic/.github/actions/setup-installbuilder@49a7ff6481f0b3ccfe45ffc9efdaa26c7171a1b1
+        uses: bitnami/bndiagnostic/.github/actions/setup-installbuilder@abd91eb3efcaf992183d45e1e0d82acc4a2fdf9e
         with:
           license: ${{ secrets.INSTALLBUILDER_LICENSE }}
       - name: Build project
-        uses: bitnami/bndiagnostic/.github/actions/build@49a7ff6481f0b3ccfe45ffc9efdaa26c7171a1b1
+        uses: bitnami/bndiagnostic/.github/actions/build@abd91eb3efcaf992183d45e1e0d82acc4a2fdf9e
         with:
           upload-api-key: ${{ secrets.UPLOAD_API_KEY }}
       - name: Copy release files
