@@ -24,7 +24,7 @@ jobs:
           upload-api-key: ${{ secrets.UPLOAD_API_KEY }}
       - name: Copy release files
         run: cp output-*/bndiagnostic-*.run output-amd64/bndiagnostic-update.xml .
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4
         with:
           name: release
           path: |
