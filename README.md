@@ -1,3 +1,6 @@
+> [!IMPORTANT]  
+> This project is now archived and no futher development is expected
+
 [![CI](https://github.com/bitnami/bndiagnostic/actions/workflows/main.yml/badge.svg)](https://github.com/bitnami/bndiagnostic/actions/workflows/main.yml)
 
 # Bndiagnostic
@@ -16,7 +19,7 @@ $ sudo ./bndiagnostic-linux-x64.run
 
 ## License
 
-Copyright &copy; 2025 Broadcom. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
+Copyright &copy; 2026 Broadcom. The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 
